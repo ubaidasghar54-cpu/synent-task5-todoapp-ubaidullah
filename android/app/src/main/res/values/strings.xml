@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">My Task</string>
-    <string name="title_activity_main">My Task</string>
-    <string name="package_name">com.ubaidullah.mytask</string>
-    <string name="custom_url_scheme">com.ubaidullah.mytask</string>
-</resources>
