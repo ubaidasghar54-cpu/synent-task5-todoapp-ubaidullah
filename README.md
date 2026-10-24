@@ -87,4 +87,4 @@ The app has no build step or package installation. Service workers and system no
 
 ## Live demo
 
-_Add your deployed app URL here._
+https://synent-task5-todoapp-ubaidullah.vercel.app/
