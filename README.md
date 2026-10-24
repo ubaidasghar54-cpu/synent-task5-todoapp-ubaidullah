@@ -82,9 +82,8 @@ The app has no build step or package installation. Service workers and system no
 
 ## Screenshots
 
-_Add a screenshot of the app here._
+<img width="1146" height="813" alt="image" src="https://github.com/user-attachments/assets/49e3d534-03bf-4ecb-9ac2-457c6b4e1bb9" />
 
-<!-- Example: ![To-Do List app screenshot](screenshots/todo-app.png) -->
 
 ## Live demo
 
