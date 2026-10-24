@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="A simple task list to help you keep track of what needs to get done."
+    />
+    <title>My Tasks | To-Do List</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="js/app.js" defer></script>
+  </head>
+  <body>
+    <main class="app-card" aria-labelledby="page-title">
+      <header class="app-header">
+        <p class="developer-brand">Ubaid Ullah <span>Developer</span></p>
+        <p class="eyebrow">A little progress, every day</p>
+        <h1 id="page-title">My Tasks</h1>
+        <p class="intro">Keep your next steps in one simple place.</p>
+        <p class="greeting-message" id="greeting-message" role="status" aria-live="polite"></p>
+      </header>
+
+      <section class="task-composer" aria-labelledby="composer-title">
+        <div class="section-heading">
+          <h2 id="composer-title">Add a task</h2>
+          <p>Write down your next step. Reminders and time limits are optional.</p>
+        </div>
+        <form class="task-form" id="task-form">
+          <div class="task-main-fields">
+            <div class="form-field">
+              <label for="task-input">Task</label>
+              <input
+                id="task-input"
+                name="task"
+                type="text"
+                placeholder="What needs to get done?"
+                autocomplete="off"
+                maxlength="120"
+                aria-describedby="form-message"
+              />
+            </div>
+            <div class="form-field">
+              <label for="reminder-input">Reminder <span>(optional)</span></label>
+              <input
+                id="reminder-input"
+                name="reminder"
+                type="datetime-local"
+                aria-label="Optional reminder date and time"
+              />
+            </div>
+          </div>
+          <div class="task-option-fields">
+            <div class="form-field">
+              <label for="duration-input">Time limit <span>(optional)</span></label>
+              <select class="duration-select" id="duration-input" name="duration">
+                <option value="">No time limit</option>
+                <option value="5">5 minutes</option>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="120">2 hours</option>
+                <option value="240">4 hours</option>
+                <option value="480">8 hours</option>
+              </select>
+            </div>
+            <button class="add-button" type="submit">Add task</button>
+          </div>
+        </form>
+      </section>
+      <p class="form-message" id="form-message" role="status" aria-live="polite"></p>
+
+      <section class="task-section" aria-label="Your task list">
+        <ul class="task-list" id="task-list" aria-live="polite">
+          <!-- JavaScript will add task items here. -->
+        </ul>
+      </section>
+
+      <footer class="task-footer">
+        <p class="task-count" id="task-count" aria-live="polite">0 tasks left</p>
+        <div class="task-controls">
+          <nav class="filters" aria-label="Filter tasks">
+            <button class="filter-button is-active" type="button" data-filter="all" aria-pressed="true">All</button>
+            <button class="filter-button" type="button" data-filter="active" aria-pressed="false">Active</button>
+            <button class="filter-button" type="button" data-filter="completed" aria-pressed="false">Completed</button>
+          </nav>
+          <button class="clear-button" id="clear-completed" type="button">Clear completed</button>
+        </div>
+      </footer>
+
+      <details class="reminder-settings">
+        <summary>Reminder settings</summary>
+        <div class="settings-grid">
+          <div class="setting-card">
+            <div>
+              <h2>Alarm sound</h2>
+              <p id="sound-status" role="status" aria-live="polite">Sound is not enabled.</p>
+            </div>
+            <button class="secondary-button" id="enable-sound" type="button">Enable alarm sound</button>
+          </div>
+          <div class="setting-card">
+            <div>
+              <h2>Notifications</h2>
+              <p id="notification-status" role="status" aria-live="polite">Notifications are not enabled.</p>
+            </div>
+            <button class="secondary-button" id="enable-notifications" type="button">Enable notifications</button>
+          </div>
+          <div class="setting-card setting-card-test">
+            <div>
+              <h2>Test your alarm</h2>
+              <p id="alarm-test-status" role="status" aria-live="polite">Try the alert without changing a task.</p>
+            </div>
+            <button class="secondary-button" id="test-alarm" type="button">Test alarm</button>
+          </div>
+        </div>
+        <p class="reminder-limit">Browser alarms need this page open. For an alert while it is closed, add the task to your calendar and use its reminder.</p>
+      </details>
+    </main>
+
+    <dialog class="alarm-dialog" id="alarm-dialog" aria-labelledby="alarm-title" aria-describedby="alarm-task">
+      <div class="alarm-content">
+        <p class="eyebrow">Reminder</p>
+        <h2 id="alarm-title">Task time</h2>
+        <p id="alarm-task" class="alarm-task" aria-live="polite"></p>
+        <div class="alarm-actions">
+          <button class="secondary-button" id="snooze-alarm" type="button">Snooze 5 min</button>
+          <button class="add-button" id="dismiss-alarm" type="button">Dismiss / Done</button>
+        </div>
+      </div>
+    </dialog>
+  </body>
+</html>
