@@ -30,6 +30,7 @@ const notificationStatus = document.querySelector('#notification-status');
 const testAlarmButton = document.querySelector('#test-alarm');
 const alarmTestStatus = document.querySelector('#alarm-test-status');
 const alarmDialog = document.querySelector('#alarm-dialog');
+const alarmTitle = document.querySelector('#alarm-title');
 const alarmTask = document.querySelector('#alarm-task');
 const snoozeAlarmButton = document.querySelector('#snooze-alarm');
 const dismissAlarmButton = document.querySelector('#dismiss-alarm');
@@ -39,6 +40,7 @@ let audioContext = null;
 let soundEnabled = false;
 let alarmQueue = [];
 let activeAlarm = null;
+let activeAlarmType = null;
 const testAlarmTasks = new Map();
 let alarmBeepInterval = null;
 let alarmSafetyTimeout = null;
@@ -103,6 +105,8 @@ function loadTasks() {
       // Older saved tasks did not include reminder fields.
       remindAt: Number.isFinite(task.remindAt) ? task.remindAt : null,
       notified: typeof task.notified === 'boolean' ? task.notified : false,
+      // Kept separately so a reminder and a time limit can each fire once.
+      durationNotified: typeof task.durationNotified === 'boolean' ? task.durationNotified : false,
       // Tasks saved before time allowances were added have no deadline.
       durationMinutes: Number.isFinite(task.durationMinutes) && task.durationMinutes > 0
         ? task.durationMinutes
@@ -331,8 +335,8 @@ function markOverdueRemindersMissed() {
 }
 
 /** Queue a due task so simultaneous reminders can be handled one at a time. */
-function triggerAlarm(task) {
-  alarmQueue.push(task.id);
+function triggerAlarm(task, type = 'reminder') {
+  alarmQueue.push({ taskId: task.id, type });
   startNextAlarm();
 }
 
@@ -401,15 +405,22 @@ async function enableNotifications() {
 }
 
 /** Show a system notification using the service worker registration. */
-async function showAlarmNotification(task) {
+async function showAlarmNotification(task, type) {
   if (!('Notification' in window) || Notification.permission !== 'granted' || !serviceWorkerRegistration) {
     return;
   }
 
   try {
-    const title = testAlarmTasks.has(task.id) ? 'Test alarm' : 'Task reminder';
+    const title = type === 'test' ? 'Test alarm'
+      : type === 'duration' ? "Task time's up"
+        : type === 'both' ? 'Reminder and time limit'
+          : 'Task reminder';
     await serviceWorkerRegistration.showNotification(title, {
-      body: task.text,
+      body: type === 'duration'
+        ? `Your time limit has ended: ${task.text}`
+        : type === 'both'
+          ? `Your reminder and time limit are due: ${task.text}`
+          : task.text,
       tag: `task-reminder-${task.id}`,
       data: { taskId: task.id },
     });
@@ -452,7 +463,8 @@ function startNextAlarm() {
     return;
   }
 
-  const taskId = alarmQueue.shift();
+  const alarm = alarmQueue.shift();
+  const { taskId, type } = alarm;
   const task = tasks.find((item) => item.id === taskId) || testAlarmTasks.get(taskId);
 
   if (!task) {
@@ -461,10 +473,15 @@ function startNextAlarm() {
   }
 
   activeAlarm = taskId;
+  activeAlarmType = type;
+  alarmTitle.textContent = type === 'test' ? 'Test alarm'
+    : type === 'duration' ? "Time's up!"
+      : type === 'both' ? 'Reminder and time limit'
+        : 'Task reminder';
   alarmTask.textContent = task.text;
   alarmDialog.showModal();
   startTitleFlash();
-  showAlarmNotification(task);
+  showAlarmNotification(task, type);
   playAlarmSound();
   startAlarmVibration();
 
@@ -589,11 +606,18 @@ async function enableAlarmSound() {
 }
 
 /** Snooze the active reminder for five minutes. */
-function snoozeTask(id) {
-  tasks = tasks.map((task) => task.id === id
-    ? { ...task, remindAt: Date.now() + 5 * 60 * 1000, notified: false }
-    : task
-  );
+function snoozeTask(id, type = 'reminder') {
+  const snoozeUntil = Date.now() + 5 * 60 * 1000;
+  tasks = tasks.map((task) => {
+    if (task.id !== id) return task;
+    if (type === 'duration') {
+      return { ...task, deadlineAt: snoozeUntil, durationNotified: false };
+    }
+    if (type === 'both') {
+      return { ...task, remindAt: snoozeUntil, notified: false, deadlineAt: snoozeUntil, durationNotified: false };
+    }
+    return { ...task, remindAt: snoozeUntil, notified: false };
+  });
   saveTasks();
   render();
 }
@@ -610,7 +634,7 @@ function dismissAlarm() {
     alarmTestStatus.textContent = 'Test alarm dismissed. No task was changed.';
   } else {
     tasks = tasks.map((task) => task.id === activeAlarm
-      ? { ...task, completed: true, notified: true }
+      ? { ...task, completed: true, notified: true, durationNotified: true }
       : task
     );
     saveTasks();
@@ -618,6 +642,7 @@ function dismissAlarm() {
 
   alarmDialog.close();
   activeAlarm = null;
+  activeAlarmType = null;
   render();
   startNextAlarm();
 }
@@ -633,11 +658,12 @@ function snoozeActiveAlarm() {
     testAlarmTasks.delete(activeAlarm);
     alarmTestStatus.textContent = 'Test alarm stopped. No reminder was scheduled.';
   } else {
-    snoozeTask(activeAlarm);
+    snoozeTask(activeAlarm, activeAlarmType);
   }
 
   alarmDialog.close();
   activeAlarm = null;
+  activeAlarmType = null;
   startNextAlarm();
 }
 
@@ -659,32 +685,40 @@ function testAlarm() {
   alarmTestStatus.textContent = soundEnabled
     ? 'Test alarm started.'
     : 'Test alarm started without sound. Enable alarm sound to hear the beep.';
-  triggerAlarm(testAlarmTasks.get(testId));
+  triggerAlarm(testAlarmTasks.get(testId), 'test');
 }
 
 /** Find reminders that are due now and fire each task only once. */
 function checkReminders() {
   const now = Date.now();
-  const dueTasks = tasks.filter((task) =>
-    task.remindAt !== null &&
-    task.remindAt <= now &&
-    !task.completed &&
-    !task.notified
-  );
+  const dueTasks = [];
+  tasks.forEach((task) => {
+    if (task.completed) return;
+    const reminderDue = task.remindAt !== null && task.remindAt <= now && !task.notified;
+    const durationDue = task.deadlineAt !== null && task.deadlineAt <= now && !task.durationNotified;
+    if (reminderDue || durationDue) {
+      dueTasks.push({ task, type: reminderDue && durationDue ? 'both' : durationDue ? 'duration' : 'reminder' });
+    }
+  });
 
   if (dueTasks.length === 0) {
     return;
   }
 
-  const dueIds = new Set(dueTasks.map((task) => task.id));
-  tasks = tasks.map((task) => dueIds.has(task.id)
-    ? { ...task, notified: true }
-    : task
-  );
+  const dueTypes = new Map(dueTasks.map(({ task, type }) => [task.id, type]));
+  tasks = tasks.map((task) => {
+    const type = dueTypes.get(task.id);
+    if (!type) return task;
+    return {
+      ...task,
+      notified: task.notified || type === 'reminder' || type === 'both',
+      durationNotified: task.durationNotified || type === 'duration' || type === 'both',
+    };
+  });
 
   // Save first, so refreshes or later checks cannot fire these twice.
   saveTasks();
-  dueTasks.forEach(triggerAlarm);
+  dueTasks.forEach(({ task, type }) => triggerAlarm({ ...task, ...tasks.find((saved) => saved.id === task.id) }, type));
   render();
 }
 
@@ -752,7 +786,7 @@ function render() {
         task.remindAt <= Date.now() &&
         !task.completed &&
         task.id !== activeAlarm &&
-        !alarmQueue.includes(task.id);
+        !alarmQueue.some((alarm) => alarm.taskId === task.id);
       reminderLabel.className = isMissedReminder
         ? 'reminder-label reminder-missed'
         : 'reminder-label';
@@ -896,6 +930,7 @@ function addTask(event) {
     completed: false,
     remindAt,
     notified: false,
+    durationNotified: false,
     durationMinutes,
     deadlineAt,
   });
