@@ -58,6 +58,17 @@ h1 {
   line-height: 1.5;
 }
 
+.motivational-quote {
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  color: #1e3a8a;
+  background: #eff6ff;
+  border-left: 4px solid #3b82f6;
+  border-radius: 8px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
 .task-composer {
   padding: 18px;
   background: #f8fafc;

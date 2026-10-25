@@ -3,8 +3,30 @@ const taskForm = document.querySelector('#task-form');
 const taskInput = document.querySelector('#task-input');
 const taskList = document.querySelector('#task-list');
 const formMessage = document.querySelector('#form-message');
+const motivationalQuote = document.querySelector('#motivational-quote');
+
+const dailyQuotes = [
+  'Small steps every day lead to big results. 🌱',
+  'You have what it takes to make today count. 💪',
+  'Progress begins with showing up. ✨',
+  'One task at a time—you are making it happen. 🚀',
+];
+const completionQuotes = [
+  'Fantastic work! Every finished task is progress. 🎉',
+  'You did it! Take a moment to celebrate your win. 🏆',
+  'One more task conquered—keep that momentum going! 🔥',
+  'Done and dusted! You are building great habits. ✅',
+];
+let currentQuote = '';
 
 let tasks = loadTasks();
+
+/** Show a motivational quote without repeating the one currently displayed. */
+function showQuote(quotes) {
+  const availableQuotes = quotes.filter((quote) => quote !== currentQuote);
+  currentQuote = availableQuotes[Math.floor(Math.random() * availableQuotes.length)];
+  motivationalQuote.textContent = currentQuote;
+}
 
 /** Read saved tasks from localStorage and ignore records with an invalid shape. */
 function loadTasks() {
@@ -123,6 +145,7 @@ function toggleTask(item) {
   if (!task) return;
 
   task.completed = !task.completed;
+  if (task.completed) showQuote(completionQuotes);
   saveTasks();
   renderTasks();
 }
@@ -154,4 +177,5 @@ taskInput.addEventListener('input', () => {
   formMessage.textContent = '';
 });
 
+showQuote(dailyQuotes);
 renderTasks();
