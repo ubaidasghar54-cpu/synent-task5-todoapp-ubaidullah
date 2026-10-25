@@ -5,7 +5,7 @@ A small task manager built with HTML, CSS, and JavaScript.
 ## Requirements
 
 - Choose from three different built-in completion sounds or upload a sound from your device using the hamburger sidebar. Uploaded sounds are only available for the current browser tab.
-- Schedule multiple alarms with 20 built-in sound patterns or audio uploaded from your device. Browser alarms ring only while the app is open; background or device-sleep delivery is not guaranteed.
+- Open the dedicated Alarms page to schedule reminders with 20 built-in sound patterns or multiple separately saved audio uploads from your device. Optional browser notifications may appear when the Alarms page is open in the background and notification permission is granted. This static web app cannot guarantee reminders after the page/app is closed or while the device sleeps; reliable closed-app delivery requires native app support or a push-notification server.
 - Add a task.
 - Delete a task.
 - Mark a task as completed.

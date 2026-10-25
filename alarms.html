@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Manage task reminders and alarm sounds." />
+    <title>Alarms | My Tasks</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="js/alarm-presets.js" defer></script>
+    <script src="js/alarms.js" defer></script>
+  </head>
+  <body class="alarm-page-body">
+    <main class="alarm-page-card">
+      <a class="back-to-tasks" href="index.html">&larr; Back to tasks</a>
+      <header class="alarm-page-header">
+        <h1>Alarms</h1>
+        <p>Manage multiple reminders and choose a unique sound for each one.</p>
+        <p class="alarm-limit-note">This browser version cannot deliver alarms after it is fully closed or reliably while your device sleeps. Notifications may help while this page is open in the background.</p>
+        <button class="sound-preview-button" id="enable-notifications" type="button">Enable background notifications</button>
+        <p class="sound-help" id="notification-help" role="status" aria-live="polite"></p>
+      </header>
+
+      <form class="alarm-form" id="alarm-form">
+        <label for="alarm-label">Alarm name</label>
+        <input id="alarm-label" name="label" type="text" maxlength="60" placeholder="Morning routine" />
+        <label for="alarm-time">Date and time</label>
+        <input id="alarm-time" name="time" type="datetime-local" required />
+        <label for="alarm-sound">Alarm sound</label>
+        <select id="alarm-sound" name="sound"></select>
+        <button class="sound-preview-button" id="alarm-sound-preview" type="button">Preview selected sound</button>
+        <label class="sound-upload-label" for="alarm-sound-upload">Add another sound from your device</label>
+        <input class="sound-upload" id="alarm-sound-upload" type="file" accept="audio/*" />
+        <p class="sound-help" id="alarm-sound-help" role="status" aria-live="polite">Uploaded sounds are saved separately in this browser, so adding one won’t replace the others.</p>
+        <button class="add-button alarm-add-button" type="submit">Add alarm</button>
+      </form>
+
+      <p class="alarm-message" id="alarm-message" role="status" aria-live="polite"></p>
+
+      <section class="alarm-list-section" aria-labelledby="alarm-list-title">
+        <h2 id="alarm-list-title">Scheduled alarms</h2>
+        <ul class="alarm-list" id="alarm-list"></ul>
+      </section>
+    </main>
+
+    <dialog class="ringing-dialog" id="ringing-dialog" aria-labelledby="ringing-title">
+      <h2 id="ringing-title">⏰ Alarm!</h2>
+      <p id="ringing-message"></p>
+      <button class="add-button" id="dismiss-alarm" type="button">Dismiss alarm</button>
+    </dialog>
+  </body>
+</html>

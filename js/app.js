@@ -17,21 +17,6 @@ const customSoundOption = document.querySelector('#custom-sound-option');
 const customSoundRadio = customSoundOption.querySelector('input');
 const customSoundLabel = document.querySelector('#custom-sound-label');
 const soundHelp = document.querySelector('#sound-help');
-const alarmOpenButton = document.querySelector('#alarm-open-button');
-const alarmDialog = document.querySelector('#alarm-dialog');
-const alarmClose = document.querySelector('#alarm-close');
-const alarmForm = document.querySelector('#alarm-form');
-const alarmLabel = document.querySelector('#alarm-label');
-const alarmTime = document.querySelector('#alarm-time');
-const alarmSoundSelect = document.querySelector('#alarm-sound');
-const alarmSoundPreview = document.querySelector('#alarm-sound-preview');
-const alarmSoundUpload = document.querySelector('#alarm-sound-upload');
-const alarmSoundHelp = document.querySelector('#alarm-sound-help');
-const alarmMessage = document.querySelector('#alarm-message');
-const alarmList = document.querySelector('#alarm-list');
-const ringingDialog = document.querySelector('#ringing-dialog');
-const ringingMessage = document.querySelector('#ringing-message');
-const dismissAlarmButton = document.querySelector('#dismiss-alarm');
 
 const dailyQuotes = [
   'Small steps every day lead to big results. 🌱',
@@ -123,31 +108,6 @@ const builtInSounds = {
   fanfare: { frequencies: [392, 523.25, 659.25, 783.99, 1046.5], type: 'square', spacing: 0.07, duration: 0.18, volume: 0.1 },
   bell: { frequencies: [783.99, 987.77, 1174.66], type: 'sine', spacing: 0.18, duration: 0.45, volume: 0.12 },
 };
-const alarmPresetNames = [
-  'Power Up', 'Sunrise Rush', 'Victory March', 'Rocket Launch', 'Bright Sparks',
-  'Champion Call', 'Electric Rise', 'Morning Bounce', 'Brass Charge', 'Starburst',
-  'High Energy', 'Winning Streak', 'Upbeat Pulse', 'Big Finish', 'Sky High',
-  'Bold Start', 'Supercharge', 'Triumph Bells', 'Fast Forward', 'Rise and Shine',
-];
-const alarmPresetIntervals = [
-  [1, 5, 8, 12], [1, 4, 7, 11], [1, 5, 8, 10], [1, 3, 7, 12],
-  [1, 6, 8, 13], [1, 4, 8, 12], [1, 5, 9, 12], [1, 3, 8, 10],
-  [1, 5, 7, 12], [1, 6, 9, 13], [1, 4, 7, 10], [1, 5, 8, 14],
-  [1, 3, 6, 10], [1, 5, 9, 13], [1, 4, 8, 11], [1, 6, 10, 14],
-  [1, 3, 7, 11], [1, 5, 10, 13], [1, 4, 9, 12], [1, 6, 8, 12],
-];
-const alarmSounds = alarmPresetNames.map((name, index) => ({
-  id: `preset-${index + 1}`,
-  name,
-  frequencies: alarmPresetIntervals[index].map((interval) => 220 * (2 ** (interval / 12))),
-  type: ['square', 'sawtooth', 'triangle', 'sine'][index % 4],
-  spacing: 0.1 + (index % 3) * 0.025,
-  duration: 0.18 + (index % 4) * 0.035,
-}));
-const ALARMS_STORAGE_KEY = 'synent-todo-alarms';
-const ALARM_SOUND_STORAGE_KEY = 'synent-todo-alarm-sound';
-const ALARM_SOUND_DB = 'synent-todo-alarm-audio';
-const ALARM_SOUND_STORE = 'sounds';
 let currentQuote = '';
 let quoteDeck = [];
 let quoteTimer;
@@ -156,13 +116,6 @@ let selectedSound = loadSoundPreference();
 let uploadedSoundUrl = '';
 let uploadedSoundName = '';
 const uploadedSound = new Audio();
-let alarms = loadAlarms();
-let selectedAlarmSound = loadAlarmSoundPreference();
-let customAlarmSoundUrl = '';
-const customAlarmAudio = new Audio();
-let alarmCheckTimer;
-let alarmSoundTimer;
-let activeAlarmQueue = [];
 
 let tasks = loadTasks();
 
@@ -216,7 +169,7 @@ function setMenuOpen(isOpen, restoreFocus = true) {
   sideMenu.classList.toggle('is-open', isOpen);
 
   if (isOpen) {
-    alarmOpenButton.focus();
+    soundOptions.querySelector('input:not(:disabled)').focus();
   } else if (restoreFocus) {
     menuToggle.focus();
   }
@@ -735,77 +688,8 @@ menuToggle.addEventListener('click', () => {
 menuClose.addEventListener('click', () => setMenuOpen(false));
 menuBackdrop.addEventListener('click', () => setMenuOpen(false));
 
-alarmOpenButton.addEventListener('click', () => {
-  setMenuOpen(false, false);
-  renderAlarmSettings();
-  alarmTime.min = getLocalDateTimeValue(new Date(Date.now() + 1000));
-  alarmDialog.showModal();
-  alarmLabel.focus();
-});
-
-alarmClose.addEventListener('click', () => alarmDialog.close());
-alarmForm.addEventListener('submit', addAlarm);
-
-alarmSoundSelect.addEventListener('change', () => {
-  selectedAlarmSound = alarmSoundSelect.value;
-  persistAlarmSoundPreference(selectedAlarmSound);
-  alarmMessage.textContent = '';
-});
-
-alarmSoundUpload.addEventListener('change', async () => {
-  const [file] = alarmSoundUpload.files;
-  if (!file) return;
-
-  if (!file.type.startsWith('audio/')) {
-    alarmMessage.textContent = 'Please choose a valid audio file.';
-    alarmSoundUpload.value = '';
-    return;
-  }
-
-  try {
-    await saveCustomAlarmSound(file);
-    if (customAlarmSoundUrl) URL.revokeObjectURL(customAlarmSoundUrl);
-    customAlarmSoundUrl = URL.createObjectURL(file);
-    customAlarmAudio.src = customAlarmSoundUrl;
-    const customOption = alarmSoundSelect.querySelector('option[value="custom"]');
-    customOption.disabled = false;
-    customOption.textContent = `Uploaded: ${file.name}`;
-    selectedAlarmSound = 'custom';
-    alarmSoundSelect.value = 'custom';
-    persistAlarmSoundPreference('custom');
-    alarmSoundHelp.textContent = 'Uploaded audio is saved in this browser and can be used by your alarms.';
-    alarmMessage.textContent = '';
-  } catch (error) {
-    console.error('Could not save the uploaded alarm sound.', error);
-    alarmMessage.textContent = 'The selected audio file could not be saved in this browser.';
-  }
-});
-
-alarmList.addEventListener('click', (event) => {
-  const deleteButton = event.target.closest('[data-action="delete-alarm"]');
-  if (!deleteButton) return;
-  const item = deleteButton.closest('.alarm-list-item');
-  if (!item) return;
-
-  alarms = alarms.filter((alarm) => alarm.id !== item.dataset.alarmId);
-  saveAlarms();
-  renderAlarmSettings();
-});
-
-dismissAlarmButton.addEventListener('click', dismissActiveAlarm);
-
-alarmSoundPreview.addEventListener('click', async () => {
-  await playAlarmSound(alarmSoundSelect.value);
-  if (alarmSoundSelect.value === 'custom') {
-    window.setTimeout(() => {
-      customAlarmAudio.pause();
-      customAlarmAudio.currentTime = 0;
-    }, 2500);
-  }
-});
-
-ringingDialog.addEventListener('cancel', (event) => {
-  event.preventDefault();
+document.querySelector('#alarm-open-button').addEventListener('click', () => {
+  window.location.assign('alarms.html');
 });
 
 soundOptions.addEventListener('change', (event) => {
@@ -850,35 +734,9 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
-renderAlarmSettings();
-alarmTime.min = getLocalDateTimeValue(new Date(Date.now() + 1000));
-alarmCheckTimer = window.setInterval(checkScheduledAlarms, 1000);
-if (selectedAlarmSound === 'custom' || alarms.some((alarm) => alarm.sound === 'custom')) {
-  loadCustomAlarmSound().then((savedSound) => {
-    if (!savedSound?.blob) throw new Error('No uploaded alarm sound is available.');
-    customAlarmSoundUrl = URL.createObjectURL(savedSound.blob);
-    customAlarmAudio.src = customAlarmSoundUrl;
-    const customOption = alarmSoundSelect.querySelector('option[value="custom"]');
-    customOption.disabled = false;
-    customOption.textContent = `Uploaded: ${savedSound.name}`;
-    alarmSoundHelp.textContent = 'Uploaded audio is saved in this browser and can be used by your alarms.';
-    alarmSoundSelect.value = selectedAlarmSound;
-  }).catch((error) => {
-    console.error('Could not restore the uploaded alarm sound.', error);
-    alarmSoundHelp.textContent = 'The previously uploaded alarm sound could not be restored. Choose another sound file.';
-    if (selectedAlarmSound === 'custom') {
-      selectedAlarmSound = alarmSounds[0].id;
-      alarmSoundSelect.value = selectedAlarmSound;
-    }
-  });
-}
-
 soundOptions.querySelector(`input[value="${selectedSound}"]`).checked = true;
 window.addEventListener('beforeunload', () => {
   if (uploadedSoundUrl) URL.revokeObjectURL(uploadedSoundUrl);
-  if (customAlarmSoundUrl) URL.revokeObjectURL(customAlarmSoundUrl);
-  window.clearInterval(alarmCheckTimer);
-  window.clearInterval(alarmSoundTimer);
 });
 
 showNextQuote(dailyQuotes);
