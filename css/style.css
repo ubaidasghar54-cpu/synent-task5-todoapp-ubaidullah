@@ -95,6 +95,8 @@ h1 {
 }
 
 .motivational-quote {
+  overflow: hidden;
+  min-height: 52px;
   margin: 0 0 20px;
   padding: 14px 16px;
   color: #1e3a8a;
@@ -103,6 +105,45 @@ h1 {
   border-radius: 8px;
   font-weight: 600;
   line-height: 1.5;
+  opacity: 0;
+  transform: translateX(-100%);
+}
+
+.motivational-quote.is-entering {
+  animation: quote-enter 600ms ease-out forwards;
+}
+
+.motivational-quote.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.motivational-quote.is-exiting {
+  animation: quote-exit 600ms ease-in forwards;
+}
+
+@keyframes quote-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes quote-exit {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
 }
 
 .task-composer {

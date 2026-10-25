@@ -17,16 +17,124 @@ const completionQuotes = [
   'One more task conquered—keep that momentum going! 🔥',
   'Done and dusted! You are building great habits. ✅',
 ];
+const quoteOpenings = [
+  'Start with one small step. 🌱',
+  'Choose progress over perfection. ✨',
+  'Focus on the task in front of you. 🎯',
+  'Take a breath and begin again. 🌤️',
+  'Make today count, one choice at a time. 💪',
+  'Keep showing up for your goals. 🚀',
+  'Turn your plans into action. 🔥',
+  'Give your best to this next step. 🌟',
+  'Build momentum with one useful action. ⚡',
+  'Trust yourself enough to begin. 🧭',
+  'Let your effort lead the way. 🛤️',
+  'Keep moving at your own pace. 🐢',
+  'Make room for steady progress. 🌿',
+  'Bring your attention back to now. 🧠',
+  'Take the next step with courage. 🦁',
+  'Keep your eyes on what matters. 👀',
+  'Make a little progress today. ☀️',
+  'Give this moment your full focus. 🔎',
+  'Turn a challenge into a chance to grow. 🌻',
+  'Keep your goals within reach. 🙌',
+  'Start where you are and use what you have. 🧰',
+  'Make consistency your superpower. 🦸',
+  'Keep your determination strong. 🏋️',
+  'Take action before doubt takes over. 🎬',
+  'Celebrate the effort you bring. 🎉',
+  'Let each task teach you something. 📚',
+  'Choose one thing and see it through. ✅',
+  'Keep building the future you want. 🏗️',
+  'Give yourself credit for trying. 💛',
+  'Move forward with purpose. 🧭',
+  'Make your next move a positive one. ➡️',
+  'Keep your spark alive. 💫',
+];
+const quoteEncouragements = [
+  'You are capable of more than you realize.',
+  'Every bit of progress adds up.',
+  'Your effort is making a difference.',
+  'You are closer than you were yesterday.',
+  'Small wins create lasting momentum.',
+  'You can handle one step at a time.',
+  'Your future self will thank you.',
+  'There is strength in staying consistent.',
+  'You are learning as you go.',
+  'A fresh start is always within reach.',
+  'Your dedication deserves to be celebrated.',
+  'You have already made it this far.',
+  'Good things grow from steady effort.',
+  'You are turning intention into achievement.',
+  'Your pace is the right pace for you.',
+  'Each attempt makes you stronger.',
+  'You deserve to feel proud of your progress.',
+  'The next step can change everything.',
+  'You have the focus to make it happen.',
+  'A little patience can lead to big results.',
+  'Your hard work is building something meaningful.',
+  'You can make today a day to remember.',
+  'Keep believing in the progress you are making.',
+  'Your determination is taking you places.',
+  'You are creating habits that will support you.',
+  'There is no small victory when you keep going.',
+  'You have what it takes to finish strong.',
+  'Every completed step is worth celebrating.',
+  'Your choices today shape a brighter tomorrow.',
+  'You are doing better than you think.',
+  'Progress is proof that your effort matters.',
+  'The work you do now is an investment in you.',
+];
+const generatedQuotes = quoteOpenings.flatMap((opening) =>
+  quoteEncouragements.map((encouragement) => `${opening} ${encouragement}`)
+);
+const allQuotes = [...dailyQuotes, ...completionQuotes, ...generatedQuotes];
 let currentQuote = '';
+let quoteDeck = [];
+let quoteTimer;
 let audioContext;
 
 let tasks = loadTasks();
 
-/** Show a motivational quote without repeating the one currently displayed. */
-function showQuote(quotes) {
-  const availableQuotes = quotes.filter((quote) => quote !== currentQuote);
-  currentQuote = availableQuotes[Math.floor(Math.random() * availableQuotes.length)];
+/** Shuffle the quote deck and avoid repeating the previous quote at a cycle boundary. */
+function refillQuoteDeck() {
+  quoteDeck = [...allQuotes];
+  for (let index = quoteDeck.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [quoteDeck[index], quoteDeck[swapIndex]] = [quoteDeck[swapIndex], quoteDeck[index]];
+  }
+
+  if (quoteDeck.length > 1 && quoteDeck[0] === currentQuote) {
+    quoteDeck.push(quoteDeck.shift());
+  }
+}
+
+/** Draw the next unused quote, preferring completion quotes after a task is checked. */
+function takeNextQuote(preferredQuotes = allQuotes) {
+  if (quoteDeck.length === 0) refillQuoteDeck();
+
+  const preferredIndex = quoteDeck.findIndex((quote) => preferredQuotes.includes(quote));
+  return quoteDeck.splice(preferredIndex < 0 ? 0 : preferredIndex, 1)[0];
+}
+
+/** Animate each quote in, hold it for five seconds, then animate it out. */
+function showNextQuote(preferredQuotes = allQuotes) {
+  window.clearTimeout(quoteTimer);
+  motivationalQuote.classList.remove('is-entering', 'is-visible', 'is-exiting');
+  currentQuote = takeNextQuote(preferredQuotes);
   motivationalQuote.textContent = currentQuote;
+
+  void motivationalQuote.offsetWidth;
+  motivationalQuote.classList.add('is-entering');
+  quoteTimer = window.setTimeout(() => {
+    motivationalQuote.classList.remove('is-entering');
+    motivationalQuote.classList.add('is-visible');
+    quoteTimer = window.setTimeout(() => {
+      motivationalQuote.classList.remove('is-visible');
+      motivationalQuote.classList.add('is-exiting');
+      quoteTimer = window.setTimeout(() => showNextQuote(), 600);
+    }, 5000);
+  }, 600);
 }
 
 /** Play a short ascending chime when a task is completed. */
@@ -176,7 +284,7 @@ function toggleTask(item) {
 
   task.completed = !task.completed;
   if (task.completed) {
-    showQuote(completionQuotes);
+    showNextQuote(completionQuotes);
     playCompletionSound();
   }
   saveTasks();
@@ -210,5 +318,5 @@ taskInput.addEventListener('input', () => {
   formMessage.textContent = '';
 });
 
-showQuote(dailyQuotes);
+showNextQuote(dailyQuotes);
 renderTasks();
