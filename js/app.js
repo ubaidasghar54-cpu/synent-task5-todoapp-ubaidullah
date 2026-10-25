@@ -2,6 +2,9 @@ const STORAGE_KEY = 'synent-todo-tasks';
 const taskForm = document.querySelector('#task-form');
 const taskInput = document.querySelector('#task-input');
 const taskList = document.querySelector('#task-list');
+const totalTaskCount = document.querySelector('#total-task-count');
+const completedTaskCount = document.querySelector('#completed-task-count');
+const remainingTaskCount = document.querySelector('#remaining-task-count');
 const formMessage = document.querySelector('#form-message');
 const motivationalQuote = document.querySelector('#motivational-quote');
 const menuToggle = document.querySelector('#menu-toggle');
@@ -612,6 +615,10 @@ function createTaskId() {
 /** Build the task list with DOM elements so task text is never treated as HTML. */
 function renderTasks() {
   taskList.replaceChildren();
+  const completedCount = tasks.filter((task) => task.completed).length;
+  totalTaskCount.textContent = String(tasks.length);
+  completedTaskCount.textContent = String(completedCount);
+  remainingTaskCount.textContent = String(tasks.length - completedCount);
 
   if (tasks.length === 0) {
     const emptyMessage = document.createElement('li');
@@ -621,10 +628,15 @@ function renderTasks() {
     return;
   }
 
-  tasks.forEach((task) => {
+  tasks.forEach((task, index) => {
     const item = document.createElement('li');
     item.className = 'task-item';
     item.dataset.taskId = task.id;
+
+    const number = document.createElement('span');
+    number.className = 'task-number';
+    number.textContent = String(index + 1);
+    number.setAttribute('aria-hidden', 'true');
 
     const checkbox = document.createElement('input');
     checkbox.className = 'task-checkbox';
@@ -647,7 +659,7 @@ function renderTasks() {
       item.classList.add('is-completed');
     }
 
-    item.append(checkbox, text, deleteButton);
+    item.append(number, checkbox, text, deleteButton);
     taskList.append(item);
   });
 }

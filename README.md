@@ -9,6 +9,8 @@ A small task manager built with HTML, CSS, and JavaScript.
 - Add a task.
 - Delete a task.
 - Mark a task as completed.
+- Display numbered tasks and live counts for total, completed, and remaining tasks.
+- Keep the task list, task controls, and summary usable on phone, tablet, and desktop screen sizes.
 - Cycle through 1,000+ animated motivational quotes every five seconds without repeating until all quotes have appeared; show a celebratory quote when a task is completed.
 - Play a short celebratory chime when a task is completed.
 - Save tasks in `localStorage` so they remain after the page is refreshed.
