@@ -13,9 +13,7 @@ const menuBackdrop = document.querySelector('#menu-backdrop');
 const menuClose = document.querySelector('#menu-close');
 const soundOptions = document.querySelector('.sound-options');
 const soundUpload = document.querySelector('#sound-upload');
-const customSoundOption = document.querySelector('#custom-sound-option');
-const customSoundRadio = customSoundOption.querySelector('input');
-const customSoundLabel = document.querySelector('#custom-sound-label');
+const uploadedSoundOptions = document.querySelector('#uploaded-sound-options');
 const soundHelp = document.querySelector('#sound-help');
 
 const dailyQuotes = [
@@ -103,6 +101,8 @@ const generatedQuotes = quoteOpenings.flatMap((opening) =>
 );
 const allQuotes = [...dailyQuotes, ...completionQuotes, ...generatedQuotes];
 const SOUND_STORAGE_KEY = 'synent-todo-completion-sound';
+const SOUND_DATABASE = 'synent-todo-completion-audio';
+const SOUND_STORE = 'sounds';
 const builtInSounds = {
   chime: { frequencies: [523.25, 659.25, 783.99, 1046.5], type: 'triangle', spacing: 0.09, duration: 0.24, volume: 0.16 },
   fanfare: { frequencies: [392, 523.25, 659.25, 783.99, 1046.5], type: 'square', spacing: 0.07, duration: 0.18, volume: 0.1 },
@@ -114,7 +114,7 @@ let quoteTimer;
 let audioContext;
 let selectedSound = loadSoundPreference();
 let uploadedSoundUrl = '';
-let uploadedSoundName = '';
+let uploadedSounds = [];
 const uploadedSound = new Audio();
 
 let tasks = loadTasks();
@@ -175,11 +175,14 @@ function setMenuOpen(isOpen, restoreFocus = true) {
   }
 }
 
-/** Read a saved built-in sound preference. */
+/** Read a saved built-in or uploaded sound preference. */
 function loadSoundPreference() {
   try {
     const savedSound = localStorage.getItem(SOUND_STORAGE_KEY);
-    return Object.prototype.hasOwnProperty.call(builtInSounds, savedSound) ? savedSound : 'chime';
+    return Object.prototype.hasOwnProperty.call(builtInSounds, savedSound) ||
+      (typeof savedSound === 'string' && savedSound.startsWith('device:'))
+      ? savedSound
+      : 'chime';
   } catch (error) {
     console.warn('Could not load the completion sound preference.', error);
     return 'chime';
@@ -194,6 +197,86 @@ function saveSoundPreference(sound) {
     console.error('Could not save the completion sound preference.', error);
     formMessage.textContent = 'Your sound choice could not be saved in this browser.';
   }
+}
+
+function openCompletionSoundDatabase() {
+  return new Promise((resolve, reject) => {
+    if (!window.indexedDB) {
+      reject(new Error('This browser does not support saved audio files.'));
+      return;
+    }
+
+    const request = window.indexedDB.open(SOUND_DATABASE, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(SOUND_STORE)) {
+        request.result.createObjectStore(SOUND_STORE);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error('Could not open audio storage.'));
+  });
+}
+
+async function saveCompletionSound(file, id) {
+  const database = await openCompletionSoundDatabase();
+  await new Promise((resolve, reject) => {
+    const transaction = database.transaction(SOUND_STORE, 'readwrite');
+    transaction.objectStore(SOUND_STORE).put({ blob: file, name: file.name }, id);
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error || new Error('Could not save the audio file.'));
+    transaction.onabort = () => reject(transaction.error || new Error('Saving the audio file was cancelled.'));
+  });
+  database.close();
+}
+
+async function loadCompletionSounds() {
+  const database = await openCompletionSoundDatabase();
+  const sounds = await new Promise((resolve, reject) => {
+    const transaction = database.transaction(SOUND_STORE, 'readonly');
+    const store = transaction.objectStore(SOUND_STORE);
+    const keysRequest = store.getAllKeys();
+    const valuesRequest = store.getAll();
+    transaction.oncomplete = () => {
+      resolve(keysRequest.result.map((id, index) => ({ id, ...valuesRequest.result[index] })));
+    };
+    transaction.onerror = () => reject(transaction.error || new Error('Could not load uploaded sounds.'));
+  });
+  database.close();
+  return sounds.filter((sound) => sound.blob instanceof Blob);
+}
+
+function renderCompletionSounds() {
+  uploadedSoundOptions.replaceChildren();
+  uploadedSounds.forEach((sound) => {
+    const label = document.createElement('label');
+    label.className = 'sound-option';
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'completion-sound';
+    radio.value = `device:${sound.id}`;
+    const name = document.createElement('span');
+    name.textContent = sound.name;
+    label.append(radio, name);
+    uploadedSoundOptions.append(label);
+  });
+
+  const selectedRadio = [...soundOptions.querySelectorAll('input[type="radio"]')]
+    .find((radio) => radio.value === selectedSound);
+  if (selectedRadio) selectedRadio.checked = true;
+}
+
+function selectCompletionSound(soundId) {
+  selectedSound = soundId;
+  saveSoundPreference(soundId);
+  const sound = uploadedSounds.find((item) => `device:${item.id}` === soundId);
+  if (uploadedSoundUrl) URL.revokeObjectURL(uploadedSoundUrl);
+  uploadedSoundUrl = sound ? URL.createObjectURL(sound.blob) : '';
+  uploadedSound.pause();
+  uploadedSound.removeAttribute('src');
+  if (sound) uploadedSound.src = uploadedSoundUrl;
+  soundHelp.textContent = sound
+    ? `${sound.name} is saved in this browser alongside your other uploaded sounds.`
+    : `${uploadedSounds.length} uploaded sound${uploadedSounds.length === 1 ? '' : 's'} saved in this browser.`;
 }
 
 /** Load saved alarms and discard malformed records. */
@@ -484,7 +567,7 @@ function getLocalDateTimeValue(date) {
 /** Play the selected uploaded sound or a generated built-in sound. */
 async function playCompletionSound() {
   try {
-    if (selectedSound === 'custom' && uploadedSoundUrl) {
+    if (selectedSound.startsWith('device:') && uploadedSoundUrl) {
       uploadedSound.currentTime = 0;
       await uploadedSound.play();
       return;
@@ -498,6 +581,7 @@ async function playCompletionSound() {
     if (audioContext.state === 'suspended') await audioContext.resume();
 
     const sound = builtInSounds[selectedSound];
+    if (!sound) throw new Error('The selected completion sound is not available.');
     const startTime = audioContext.currentTime;
     sound.frequencies.forEach((frequency, index) => {
       const noteStart = startTime + index * sound.spacing;
@@ -696,11 +780,10 @@ soundOptions.addEventListener('change', (event) => {
   if (!event.target.matches('input[type="radio"]')) return;
 
   formMessage.textContent = '';
-  selectedSound = event.target.value;
-  if (selectedSound !== 'custom') saveSoundPreference(selectedSound);
+  selectCompletionSound(event.target.value);
 });
 
-soundUpload.addEventListener('change', () => {
+soundUpload.addEventListener('change', async () => {
   const [file] = soundUpload.files;
   if (!file) return;
 
@@ -710,21 +793,19 @@ soundUpload.addEventListener('change', () => {
     return;
   }
 
-  if (uploadedSoundUrl) URL.revokeObjectURL(uploadedSoundUrl);
-  uploadedSoundUrl = URL.createObjectURL(file);
-  uploadedSoundName = file.name;
-  uploadedSound.src = uploadedSoundUrl;
-  customSoundRadio.disabled = false;
-  customSoundRadio.checked = true;
-  customSoundLabel.textContent = uploadedSoundName;
-  soundHelp.textContent = 'Uploaded sound is selected. It stays in this browser tab and is not uploaded.';
-  selectedSound = 'custom';
-  formMessage.textContent = '';
-
+  const soundId = `device-${createTaskId()}`;
   try {
-    localStorage.removeItem(SOUND_STORAGE_KEY);
+    await saveCompletionSound(file, soundId);
+    uploadedSounds.push({ id: soundId, name: file.name, blob: file });
+    selectedSound = `device:${soundId}`;
+    saveSoundPreference(selectedSound);
+    renderCompletionSounds();
+    selectCompletionSound(selectedSound);
+    formMessage.textContent = '';
+    soundUpload.value = '';
   } catch (error) {
-    console.warn('Could not clear the saved completion sound preference.', error);
+    console.error('Could not save the uploaded completion sound.', error);
+    formMessage.textContent = 'The sound could not be saved. Check browser storage and try again.';
   }
 });
 
@@ -734,7 +815,28 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
-soundOptions.querySelector(`input[value="${selectedSound}"]`).checked = true;
+loadCompletionSounds().then((sounds) => {
+  const soundsById = new Map(uploadedSounds.map((sound) => [sound.id, sound]));
+  sounds.forEach((sound) => soundsById.set(sound.id, sound));
+  uploadedSounds = [...soundsById.values()];
+  if (selectedSound.startsWith('device:') &&
+      !uploadedSounds.some((sound) => `device:${sound.id}` === selectedSound)) {
+    selectedSound = 'chime';
+    saveSoundPreference(selectedSound);
+  }
+  renderCompletionSounds();
+  selectCompletionSound(selectedSound);
+}).catch((error) => {
+  console.error('Could not load saved completion sounds.', error);
+  if (selectedSound.startsWith('device:')) {
+    selectedSound = 'chime';
+    saveSoundPreference(selectedSound);
+  }
+  renderCompletionSounds();
+  selectCompletionSound(selectedSound);
+  soundHelp.textContent = 'Saved sounds could not be loaded. Choose a built-in sound or try again later.';
+});
+
 window.addEventListener('beforeunload', () => {
   if (uploadedSoundUrl) URL.revokeObjectURL(uploadedSoundUrl);
 });

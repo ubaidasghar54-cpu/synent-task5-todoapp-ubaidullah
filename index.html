@@ -43,14 +43,11 @@
           <input type="radio" name="completion-sound" value="bell" />
           <span>Gentle bells</span>
         </label>
-        <label class="sound-option custom-sound-option" id="custom-sound-option">
-          <input type="radio" name="completion-sound" value="custom" disabled />
-          <span id="custom-sound-label">Uploaded sound</span>
-        </label>
+        <div id="uploaded-sound-options"></div>
       </fieldset>
       <label class="sound-upload-label" for="sound-upload">Add a sound from your device</label>
       <input class="sound-upload" id="sound-upload" type="file" accept="audio/*" />
-      <p class="sound-help" id="sound-help" role="status" aria-live="polite">Your sound stays in this browser tab and is not uploaded.</p>
+      <p class="sound-help" id="sound-help" role="status" aria-live="polite">Uploaded sounds are saved in this browser and remain available after you close and reopen the app.</p>
     </aside>
 
     <main class="app-card" aria-labelledby="page-title">

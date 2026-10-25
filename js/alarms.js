@@ -2,6 +2,7 @@ const ALARMS_STORAGE_KEY = 'synent-todo-alarms';
 const ALARM_SOUND_STORAGE_KEY = 'synent-todo-alarm-sound';
 const ALARM_SOUND_DB = 'synent-todo-alarm-audio';
 const ALARM_SOUND_STORE = 'sounds';
+const NOTIFICATION_PROMPT_STORAGE_KEY = 'synent-todo-notification-prompted';
 
 const alarmForm = document.querySelector('#alarm-form');
 const alarmLabel = document.querySelector('#alarm-label');
@@ -105,7 +106,7 @@ function updateNotificationStatus() {
     return;
   }
 
-  notificationHelp.textContent = 'Allow notifications for a reminder when this page is open but in the background.';
+  notificationHelp.textContent = 'The browser will ask once when you create your first alarm. Notifications require this page to remain open.';
 }
 
 async function enableNotifications() {
@@ -121,6 +122,22 @@ async function enableNotifications() {
     console.error('Could not request notification permission.', error);
     notificationHelp.textContent = 'The browser could not enable notifications. Check browser settings and try again.';
   }
+}
+
+function requestNotificationsForFirstAlarm() {
+  if (!window.isSecureContext || !('Notification' in window) || Notification.permission !== 'default') {
+    updateNotificationStatus();
+    return;
+  }
+
+  try {
+    if (localStorage.getItem(NOTIFICATION_PROMPT_STORAGE_KEY) === 'true') return;
+    localStorage.setItem(NOTIFICATION_PROMPT_STORAGE_KEY, 'true');
+  } catch (error) {
+    console.warn('Could not save the notification prompt preference.', error);
+  }
+
+  enableNotifications();
 }
 
 function notifyAlarm(alarm) {
@@ -337,6 +354,7 @@ function addAlarm(event) {
   alarmSoundSelect.value = selectedAlarmSound;
   alarmMessage.textContent = 'Alarm saved. Keep this page open for it to ring; notifications may appear in the background if enabled.';
   renderAlarms();
+  requestNotificationsForFirstAlarm();
 }
 
 function checkAlarms() {
