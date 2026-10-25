@@ -8,6 +8,7 @@ A small task manager built with HTML, CSS, and JavaScript.
 - Delete a task.
 - Mark a task as completed.
 - Show a fresh motivational quote when the app opens and a celebratory quote when a task is completed.
+- Play a short celebratory chime when a task is completed.
 - Save tasks in `localStorage` so they remain after the page is refreshed.
 
 ## Project files

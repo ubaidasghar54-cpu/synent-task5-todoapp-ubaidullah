@@ -18,6 +18,7 @@ const completionQuotes = [
   'Done and dusted! You are building great habits. ✅',
 ];
 let currentQuote = '';
+let audioContext;
 
 let tasks = loadTasks();
 
@@ -26,6 +27,35 @@ function showQuote(quotes) {
   const availableQuotes = quotes.filter((quote) => quote !== currentQuote);
   currentQuote = availableQuotes[Math.floor(Math.random() * availableQuotes.length)];
   motivationalQuote.textContent = currentQuote;
+}
+
+/** Play a short ascending chime when a task is completed. */
+async function playCompletionSound() {
+  if (typeof window.AudioContext !== 'function') return;
+
+  try {
+    if (!audioContext) audioContext = new window.AudioContext();
+    if (audioContext.state === 'suspended') await audioContext.resume();
+
+    const startTime = audioContext.currentTime;
+    [523.25, 659.25, 783.99, 1046.5].forEach((frequency, index) => {
+      const noteStart = startTime + index * 0.09;
+      const oscillator = audioContext.createOscillator();
+      const volume = audioContext.createGain();
+
+      oscillator.type = 'triangle';
+      oscillator.frequency.setValueAtTime(frequency, noteStart);
+      volume.gain.setValueAtTime(0.0001, noteStart);
+      volume.gain.exponentialRampToValueAtTime(0.16, noteStart + 0.02);
+      volume.gain.exponentialRampToValueAtTime(0.0001, noteStart + 0.23);
+      oscillator.connect(volume);
+      volume.connect(audioContext.destination);
+      oscillator.start(noteStart);
+      oscillator.stop(noteStart + 0.24);
+    });
+  } catch (error) {
+    console.warn('Could not play the task completion sound.', error);
+  }
 }
 
 /** Read saved tasks from localStorage and ignore records with an invalid shape. */
@@ -145,7 +175,10 @@ function toggleTask(item) {
   if (!task) return;
 
   task.completed = !task.completed;
-  if (task.completed) showQuote(completionQuotes);
+  if (task.completed) {
+    showQuote(completionQuotes);
+    playCompletionSound();
+  }
   saveTasks();
   renderTasks();
 }
